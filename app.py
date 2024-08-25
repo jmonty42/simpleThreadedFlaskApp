@@ -1,9 +1,20 @@
+import requests
+import signal
+import sys
+
 from flask import Flask
 from threading import Thread
-import requests
 
 app1 = Flask("server1")
 app2 = Flask("server2")
+
+
+def signal_handler(signal, frame):
+    print("SIGINT received, shutting down")
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def send_request_to_app2():
@@ -28,12 +39,15 @@ def hello_world():  # put application's code here
 
 
 if __name__ == '__main__':
-    app1_thread = Thread(target=app1.run, kwargs={"port": 4000})
+    # system.exit(0) wasn't working unless the threads for the flask apps were marked as daemons
+    app1_thread = Thread(target=app1.run, kwargs={"port": 4000}, daemon=True)
     app1_thread.start()
     print("Server 1 is running...")
-    app2_thread = Thread(target=app2.run, kwargs={"port": 5000})
+    app2_thread = Thread(target=app2.run, kwargs={"port": 5000}, daemon=True)
     app2_thread.start()
     print("Server 2 is running...")
+    # this is never reached as the flask app threads will continue to run and have no clean way to shut them down
+    # from outside their own threads
     app1_thread.join()
     print("Server 1 is stopped...")
     app2_thread.join()
